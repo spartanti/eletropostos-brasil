@@ -3,7 +3,10 @@
 import json, glob, math, re, sys, datetime
 from collections import Counter
 
-ref = json.load(open('ocm-export/data/referencedata.json'))
+import os
+# Fonte OCM: API oficial (ocm_api_br.json + ocm_api_reference.json, gerados com a chave) ou, na falta, o export do GitHub.
+USE_API = os.path.exists('ocm_api_br.json') and os.path.exists('ocm_api_reference.json')
+ref = json.load(open('ocm_api_reference.json' if USE_API else 'ocm-export/data/referencedata.json'))
 OPS = {o['ID']: o['Title'] for o in ref['Operators']}
 CT  = {c['ID']: c['Title'] for c in ref['ConnectionTypes']}
 UT  = {u['ID']: u['Title'] for u in ref['UsageTypes']}
@@ -79,8 +82,9 @@ stations = []
 stats = Counter()
 
 # ---------- OpenChargeMap ----------
-for f in sorted(glob.glob('ocm-export/data/BR/*.json')):
-    p = json.load(open(f))
+ocm_pois = json.load(open('ocm_api_br.json')) if USE_API else [json.load(open(f)) for f in sorted(glob.glob('ocm-export/data/BR/*.json'))]
+print('fonte OCM:', 'API' if USE_API else 'export GitHub', len(ocm_pois), 'POIs')
+for p in ocm_pois:
     if p.get('SubmissionStatusTypeID', 200) not in (100, 200): stats['ocm_skip_status'] += 1; continue
     a = p.get('AddressInfo') or {}
     lat, lon = a.get('Latitude'), a.get('Longitude')
@@ -255,7 +259,7 @@ for s in merged: s.pop('uf_est', None)
 merged.sort(key=lambda s: (s['uf'], s['city'], s['name']))
 out = {
     'generated': datetime.date.today().isoformat(),
-    'sources': {'ocm': 'Open Charge Map (CC BY 4.0 / CC0), export 2026-04-22', 'osm': 'OpenStreetMap contributors (ODbL), Overpass 2026-09-04'},
+    'sources': {'ocm': 'Open Charge Map (CC BY 4.0 / CC0) via API em ' + datetime.date.today().isoformat(), 'osm': 'OpenStreetMap contributors (ODbL) via Overpass em ' + datetime.date.today().isoformat()},
     'count': len(merged),
     'stations': merged,
 }

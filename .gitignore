@@ -2,3 +2,5 @@ data/ocm-export/
 data/overpass_raw.json
 data/stations.json
 data/stations_pretty.json
+data/ocm_api_br.json
+data/ocm_api_reference.json

@@ -18,11 +18,20 @@ jobs:
           cd data
           curl -sS --retry 3 --retry-delay 30 -o overpass_raw.json --data-urlencode "data@q.overpass" https://overpass-api.de/api/interpreter
           python3 -c "import json; d=json.load(open('overpass_raw.json')); print('OSM:', len(d['elements']))"
-      - name: Baixar export do Open Charge Map (Brasil)
+      - name: Baixar Open Charge Map pela API (Brasil)
+        env:
+          OCM_API_KEY: ${{ secrets.OCM_API_KEY }}
         run: |
           cd data
-          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/openchargemap/ocm-export.git
-          cd ocm-export && git sparse-checkout set data/BR && ls data/BR | wc -l
+          if [ -n "$OCM_API_KEY" ]; then
+            curl -sS --retry 3 --retry-delay 20 -o ocm_api_br.json "https://api.openchargemap.io/v3/poi/?key=$OCM_API_KEY&countrycode=BR&maxresults=100000&compact=true&verbose=false"
+            curl -sS --retry 3 --retry-delay 20 -o ocm_api_reference.json "https://api.openchargemap.io/v3/referencedata/?key=$OCM_API_KEY"
+            python3 -c "import json; d=json.load(open('ocm_api_br.json')); assert len(d) > 500, 'API devolveu poucos POIs'; print('OCM API:', len(d))"
+          else
+            echo "Sem OCM_API_KEY: usando o export do GitHub"
+            git clone -q --depth 1 --filter=blob:none --sparse https://github.com/openchargemap/ocm-export.git
+            cd ocm-export && git sparse-checkout set data/BR && ls data/BR | wc -l
+          fi
       - name: Unir bases e geocodificar pontos novos
         run: |
           cd data
