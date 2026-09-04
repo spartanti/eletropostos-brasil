@@ -1,0 +1,41 @@
+name: Atualizar base de eletropostos
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # toda segunda-feira, 06:00 UTC (03:00 Brasília)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Baixar eletropostos do OpenStreetMap (Overpass)
+        run: |
+          cd data
+          curl -sS --retry 3 --retry-delay 30 -o overpass_raw.json --data-urlencode "data@q.overpass" https://overpass-api.de/api/interpreter
+          python3 -c "import json; d=json.load(open('overpass_raw.json')); print('OSM:', len(d['elements']))"
+      - name: Baixar export do Open Charge Map (Brasil)
+        run: |
+          cd data
+          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/openchargemap/ocm-export.git
+          cd ocm-export && git sparse-checkout set data/BR && ls data/BR | wc -l
+      - name: Unir bases e geocodificar pontos novos
+        run: |
+          cd data
+          python3 merge.py
+          python3 geocode.py --max 150
+          python3 merge.py
+          cp stations.json ../stations.json
+      - name: Publicar se houver mudança
+        run: |
+          git config user.name "spartanti-bot"
+          git config user.email "spartanti2022@gmail.com"
+          git add stations.json data/geocache.json
+          if git diff --cached --quiet; then echo "Sem mudanças"; else
+            git commit -m "Base atualizada em $(date -u +%Y-%m-%d)"
+            git push
+          fi

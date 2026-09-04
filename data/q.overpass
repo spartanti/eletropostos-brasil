@@ -1,0 +1,8 @@
+[out:json][timeout:300];
+area["ISO3166-1"="BR"][admin_level=2]->.br;
+(
+  node["amenity"="charging_station"](area.br);
+  way["amenity"="charging_station"](area.br);
+  relation["amenity"="charging_station"](area.br);
+);
+out center tags;
