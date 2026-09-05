@@ -126,6 +126,14 @@ for p in ocm_pois:
     })
     stats['ocm'] += 1
 
+# ---------- Feeds de redes parceiras (data/feeds/*.json no formato do app) ----------
+for f in sorted(glob.glob('feeds/*.json')):
+    try:
+        fd = json.load(open(f))
+        for st in fd.get('stations', []):
+            if -34.5 <= st.get('lat', 0) <= 6 and -74.5 <= st.get('lon', 0) <= -28: stations.append(st); stats['feed:' + os.path.basename(f)] += 1
+    except Exception as e: print('feed ignorado', f, e)
+
 # ---------- OpenStreetMap ----------
 osm = json.load(open('overpass_raw.json'))['elements']
 unmapped = Counter()
